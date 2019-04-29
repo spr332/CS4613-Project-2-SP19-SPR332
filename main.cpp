@@ -2,17 +2,19 @@
 #include <string>
 #include <vector>
 #include <fstream>
+#include "sugar.h"
 using namespace std;
-int casttonum[25] = {0,1,2,4,8,16,32,64,128,256,512,1024,2048,4096,8192,16384,32768,65536,131072,262144,524288,1048576,2097152,4194304};
-int *sections[18][9]{{ 0, 1, 2, 3, 4, 5, 6, 7, 8},{ 9,10,11,12,13,14,15,16,17},
-                   {18,19,20,21,22,23,24,25,26},{27,28,29,30,31,32,33,34,35},
-                   {36,37,38,39,40,41,42,43,44},{45,46,47,48,49,50,51,52,53},
-                   {54,55,56,57,58,59,60,61,62},{63,64,65,66,67,68,69,70,71},
-                   {72,73,74,75,76,77,78,79,80},{ 0, 1, 2, 9,10,11,18,19,20},
-                   { 3, 4, 5,12,13,14,21,22,23},{ 6, 7, 8,15,16,17,24,25,26},
-                   {27,28,29,36,37,38,45,46,47},{30,31,32,39,40,41,48,49,50},
-                   {33,34,35,42,43,44,51,52,53},{54,55,56,63,64,65,72,73,74},
-                   {57,58,59,66,67,68,75,78,79},{60,61,62,69,70,71,78,79,80}};
+
+
+// Everything above this line is global constants and includes
+/* 
+Sugar.h info:
+
+Adds the decode(int) loop
+essentially decodes a num
+into ints accessable by the
+name i, an int.
+*/
 
 class num{
     int self; 
@@ -25,8 +27,7 @@ class num{
         self = 0;
     }
     num(int neue){
-        neue %=25;
-        self = casttonum[neue];
+        self = ((neue==0)?0:(1 << neue-1));
     }
     operator int(){ //Implicit casting to int
         return this->getNum();
@@ -38,8 +39,7 @@ class num{
     //Returns a numerical representation of num
     //If there are only domain values returns 0
         if (self == 0)return 0;
-        int k=0; //unused? - carroll
-        for(int i =1;i<9;i++){
+        for(int i =0;i<9;i++){
             if (self&(1<<i))
                 return i;
         }
@@ -53,7 +53,7 @@ class num{
         return *this;
     }
     num& operator+= (const int& rhs){//Adds a number to the Domain set  bits [9-17]
-        int neue = casttonum[rhs];
+        int neue =  ((rhs==0)?0:(1 << rhs-1));
         neue = neue << 9; //Shift left logical by 9
         self = self | neue; //bitwise or
         return *this;
@@ -76,37 +76,117 @@ ostream& operator<<(ostream& os, const num& n){
     os<<n.getNum();
     return os;
 }
-class decoder{
-    int domain;
-    public:
-    decoder(int in){domain=in;}
-    int next(){
-        if (domain==0)
-            return 0;
-        for (int i = 1; i<9; i++){
-            if (*domain & (1<<i)){ //if i bit exists
-                *domain = *domain ^ (1<<i);//bitwise remove a bit using xor
-                return i; //return that i existed
-            }
-        }
-        return 0;
-    }
-};  //Syntactical sugar: for(int i = nameofdecoder(9); i!=0; i = nameofdecoder.next())
+/*
+class num info:
 
+a num is a representation of a
+single spot in the 9x9 grid
+the low 18 bits represent the Domain and Final 
+Unused:[31-18]  Domain:[17-9]  Final Setting:[8-0]
+bits in the domain and final work like this:
+987654321 and 9876543231 respectively
+so if a domain looks like 010000100 
+then the domain is 8 and 3.
 
-//Above this line is the code setting up the num type.
+ 
+*/
+
 
 struct state{
     num* layout;
     state(){
         layout = new (num[81]) ;
     }
-    
-    
+    void doForwardChecking(int changedValue){
+        //After a variable is assigned a value, update the remaining legal values of its neighbors.
+        
+        
+    }
+};
+/*
+state struct info:
+state is a struct for easier access to the layout.
+
+*/
+
+
+
+ostream& operator<<(ostream&os , const state& st){
+    for(int row=72;row>=0;row-=9){
+        for(int col=0;col<9;col++){
+            os<<st.layout[row+col]<<" ";
+        }
+        os<<"\n";
+    }
+    return os;
+}
+int convertChar(char a){ 
+    if (a=='0'){
+        return 0;
+    }
+    else if (a=='1'){
+        return 1;
+    }
+    else if (a=='2'){
+        return 2;
+    }
+    else if (a=='3'){
+        return 3;
+    }
+    else if (a=='4'){
+        return 4;
+    }
+    else if (a=='5'){
+        return 5;
+    }
+    else if (a=='6'){
+        return 6;
+    }
+    else if (a=='7'){
+        return 7;
+    }
+    else if (a=='8'){
+        return 8;
+    }
+    else if (a=='9'){
+        return 9;
+    }
+    return -1;
+}
+class FileHandler{ //A file handler for problems
+    string filename;
+    state * st;
+    public:
+    FileHandler(string fileName, state* a){
+        st = a;
+        filename = fileName;
+        ifstream file;
+        string temp="";
+        file.open(fileName);
+        if (file.is_open()){
+            for(int row=72;row>=0;row-=9){
+                getline(file,temp);
+                for(int col=0;col<9;col++){
+                    a->layout[row+col] = num( //The number at place in file
+                                  convertChar(
+                                  temp[col*2]  ));
+                }
+            }
+            file.close();
+        }
+        else{
+            cerr << "FILE "<< fileName <<" NOT FOUND"<<endl<<"Exiting..."<<endl;
+        }
+    }
+    void out(){
+        return;
+    }
+
 };
 
-
 int main(){
-    
+    state theState;
+    FileHandler fh("inputa.txt", &theState);
+    cout<<endl<<theState<<endl;
     
 }

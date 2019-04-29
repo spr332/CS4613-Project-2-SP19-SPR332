@@ -46,9 +46,25 @@ class num{
         return 0;
     }
     int getInt() const {return self;} //Returns the unmodified "self"
-    num& operator+= (const num& rhs){//Adds a number to the Domain set  bits [9-17]
+    num& DtoF(){ // shift Domain to Final
+        self = self >> 9;
+        return *this;
+    }
+    num& FtoD(){ // shift Final to Domain
+        self = self << 9;
+        return *this;
+    }
+    num& selectOnlyFinal(){
+        self = self ^ 0b11111111111111111111111100000000;
+        return *this;
+    }
+    num& onesComplement(){
+        self = ~self;
+        return *this;
+    }
+    num& operator+= (const num& rhs){//Adds the domain of a number to the Domain set  bits [9-17]
         int neue = rhs.getInt();
-        neue = neue << 9; //Shift left logical by 9
+        neue = neue << 9;
         self = self | neue; //bitwise or
         return *this;
     }
@@ -56,6 +72,18 @@ class num{
         int neue =  ((rhs==0)?0:(1 << rhs-1));
         neue = neue << 9; //Shift left logical by 9
         self = self | neue; //bitwise or
+        return *this;
+    }
+    num& operator-= (const num& rhs){//Removes a number to the Domain set  bits [9-17]
+        int neue = rhs.getInt();
+        neue = neue << 9; //Shift left logical by 9
+        self = self ^ neue; //bitwise xor
+        return *this;
+    }
+    num& operator-= (const int& rhs){//Removes a number to the Domain set  bits [9-17]
+        int neue =  ((rhs==0)?0:(1 << rhs-1));
+        neue = neue << 9; //Shift left logical by 9
+        self = self ^ neue; //bitwise xor
         return *this;
     }
     int const getDomain(){
@@ -97,10 +125,21 @@ struct state{
     state(){
         layout = new (num[81]) ;
     }
-    void doForwardChecking(int changedValue){
+    void doForwardChecking(int changedValueLocation){
         //After a variable is assigned a value, update the remaining legal values of its neighbors.
-        
-        
+        num* theNum = &layout[changedValueLocation];
+        neighborSet(changedValueLocation) //This is a loop. i will iteratively be the neighbors of changedValueLocation.
+            layout[i]-= *theNum;
+    }
+    void globalForwardChecking(){
+        num a;
+        for(int l=0;l<81;l++){
+            a = layout[l];
+            neighborSet(l)//This is a loop. i will iteratively be the neighbors of l.
+                a+=layout[i];//add layout[i] to domain
+            layout[l]+=a.DtoF().onesComplement().selectOnlyFinal();// update the domains.
+        }
+         
     }
 };
 /*

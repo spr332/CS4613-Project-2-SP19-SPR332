@@ -24,10 +24,10 @@ class num{
     //bits [0-8] Number 1-9
     public:
     num(){
-        self = 0;
+        self = 0b1111111100000000;
     }
     num(int neue){
-        self = ((neue==0)?0:(1 << neue-1));
+        self = ((neue==0)?self:(1 << neue-1));
     }
     operator int(){ //Implicit casting to int
         return this->getNum();
@@ -55,12 +55,30 @@ class num{
         return *this;
     }
     num& selectOnlyFinal(){
-        self = self ^ 0b11111111111111111111111100000000;
+        self = self & 0b11111111;//
         return *this;
     }
     num& onesComplement(){
         self = ~self;
         return *this;
+    }
+    
+
+    num& addToDomain(const num& rhs){//Adds the domain of a number to the Domain set  bits [9-17]
+        int neue = rhs.getInt();
+        neue = neue << 9;
+        self = self | neue; //bitwise or
+        return *this;
+        }
+    bool checkComplete(){
+        int count=0;
+        decode(self>>9)
+            count++;
+        if (count==1){
+            self = self>>9;
+            return true;
+        }
+        return false;
     }
     num& operator+= (const num& rhs){//Adds the domain of a number to the Domain set  bits [9-17]
         int neue = rhs.getInt();
@@ -137,7 +155,8 @@ struct state{
             a = layout[l];
             neighborSet(l)//This is a loop. i will iteratively be the neighbors of l.
                 a+=layout[i];//add layout[i] to domain
-            layout[l]+=a.DtoF().onesComplement().selectOnlyFinal();// update the domains.
+            if (layout[l].addToDomain(   a.DtoF().onesComplement().selectOnlyFinal()   ).checkComplete()  )// update the domains.
+                doForwardChecking(layout[l]);
         }
          
     }

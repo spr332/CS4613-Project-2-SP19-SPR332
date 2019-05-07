@@ -5,3 +5,9 @@ ass.exe
 d.exe
 main.exe
 *.exe
+ToDebug.txt
+*.idb
+*.ipch
+*.db
+.vs/main/v15/.suo
+*.pdb

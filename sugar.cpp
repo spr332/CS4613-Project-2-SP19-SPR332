@@ -15,8 +15,8 @@ int decoder::next(){
         return 0;
     for (int i = 0; i<9; i++){
         if (domain & (1<<i)){ //if i'th bit exists (starts at 1 goes to 256 aka 9)
-            domain = domain ^ (1<<i);//bitwise remove a bit using xor
-            return i; //return that i existed
+            domain = domain - (1<<i);//remove a bit
+            return i+1; //return that i existed
         }
     }
     return 0;

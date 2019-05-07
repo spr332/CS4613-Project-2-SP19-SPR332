@@ -24,100 +24,66 @@ class num{
     //bits [0-8] Number 1-9
     public:
     num(){
-        self = 0b1111111100000000;
+        self = 0b111111111000000000; //init with domain 123456789
     }
     num(int neue){
-        self = ((neue==0)?self:(1 << neue-1));
+        self = ((neue==0)?0b111111111000000000:(1 << neue));
+        cout<<self<<" ";
     }
-    operator int(){ //Implicit casting to int
+    operator int()const{ //Implicit casting to int
         return this->getNum();
     }
-    operator bool(){ //Implicit casting to bool
-        return (self<=512 || self > 0); //returns if value is final (not a domain value)
+    num& setTo(int neue){
+        self = ((neue==0)?self:(1 << neue-1));
+        return *this;
     }
     int getNum() const {  
     //Returns a numerical representation of num
     //If there are only domain values returns 0
         if (self == 0)return 0;
-        for(int i =0;i<9;i++){
-            if (self&(1<<i))
-                return i;
+        if (self<=512 || self > 0){
+            for(int i =0;i<9;i++){
+                if (self&(1<<i))
+                    return i;
+            }
         }
         return 0;
     }
     int getInt() const {return self;} //Returns the unmodified "self"
-    num& DtoF(){ // shift Domain to Final
+    num& becomeDomain(){ // shift Domain to Final
         self = self >> 9;
         return *this;
     }
-    num& FtoD(){ // shift Final to Domain
-        self = self << 9;
-        return *this;
+    bool isComplete()const{
+        return (self<=512 && self > 0);
     }
-    num& selectOnlyFinal(){
-        self = self & 0b11111111;//
-        return *this;
-    }
-    num& onesComplement(){
-        self = ~self;
-        return *this;
-    }
-    
-
-    num& addToDomain(const num& rhs){//Adds the domain of a number to the Domain set  bits [9-17]
-        int neue = rhs.getInt();
-        neue = neue << 9;
-        self = self | neue; //bitwise or
-        return *this;
-        }
-    bool checkComplete(){
-        int count=0;
-        decode(self>>9)
-            count++;
-        if (count==1){
-            self = self>>9;
-            return true;
-        }
-        return false;
-    }
-    num& operator+= (const num& rhs){//Adds the domain of a number to the Domain set  bits [9-17]
-        int neue = rhs.getInt();
-        neue = neue << 9;
-        self = self | neue; //bitwise or
-        return *this;
-    }
-    num& operator+= (const int& rhs){//Adds a number to the Domain set  bits [9-17]
-        int neue =  ((rhs==0)?0:(1 << rhs-1));
-        neue = neue << 9; //Shift left logical by 9
-        self = self | neue; //bitwise or
-        return *this;
-    }
+    // -------------------------------------------------------------------------------------------ADD THE ++
     num& operator-= (const num& rhs){//Removes a number to the Domain set  bits [9-17]
         int neue = rhs.getInt();
         neue = neue << 9; //Shift left logical by 9
         self = self ^ neue; //bitwise xor
         return *this;
     }
-    num& operator-= (const int& rhs){//Removes a number to the Domain set  bits [9-17]
-        int neue =  ((rhs==0)?0:(1 << rhs-1));
-        neue = neue << 9; //Shift left logical by 9
-        self = self ^ neue; //bitwise xor
-        return *this;
+    int countRemainingDomain()const{
+        int count=0;
+        decode(self>>9){
+            count++;
+        }
+        return count;
     }
-    int const getDomain(){
-        int neue = self;
-        neue = neue << 14;//clear high bits
-        neue = neue >> 23;//clear low bits
-        return neue;
+    int nextPossibleDomain(){
+        decode(self<<9){
+            *this-=num(i);//get the first and 
+            return i;//dont continue loop.
+        }
+        return -1;
+    }
+    bool checkValidityOfDomainItem(int t)const{ //ffffffic this as it probably should check neighborset;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+        return true;
     }
     
 };
-inline bool operator==(const num& lhs, const num& rhs){return lhs.getInt() == rhs.getInt();}
-inline bool operator!=(const num& lhs, const num& rhs){return !operator==(lhs,rhs);}
-inline bool operator< (const num& lhs, const num& rhs){return lhs.getInt() < rhs.getInt();}
-inline bool operator> (const num& lhs, const num& rhs){return  operator< (rhs,lhs);}
-inline bool operator<=(const num& lhs, const num& rhs){return !operator> (lhs,rhs);}
-inline bool operator>=(const num& lhs, const num& rhs){return !operator< (lhs,rhs);}
+
 ostream& operator<<(ostream& os, const num& n){
     os<<n.getNum();
     return os;
@@ -137,33 +103,90 @@ then the domain is 8 and 3.
  
 */
 
-
+int* memcpy (int *dest, const int *src, size_t len){
+  int *d = (int*)dest;
+  const int *s = (int*)src;
+  while (len--)
+    *d++ = *s++;
+  return dest;
+}
 struct state{
     num* layout;
     state(){
         layout = new (num[81]) ;
     }
+    state(state* old){
+        layout = new (num[81]);
+        memcpy(layout, old->layout, 81);
+    }
+    
     void doForwardChecking(int changedValueLocation){
         //After a variable is assigned a value, update the remaining legal values of its neighbors.
         num* theNum = &layout[changedValueLocation];
-        neighborSet(changedValueLocation) //This is a loop. i will iteratively be the neighbors of changedValueLocation.
-            layout[i]-= *theNum;
+        neighborSet(changedValueLocation){ //This is a loop. i will iteratively be the neighbors of changedValueLocation.
+            if (! (layout[i].isComplete() )) //if not complete, update domain
+                layout[i]-= *theNum;
+        }
     }
-    void globalForwardChecking(){
+    void globalForwardChecking(){ //Update the domain values of everything possible
         num a;
         for(int l=0;l<81;l++){
-            a = layout[l];
-            neighborSet(l)//This is a loop. i will iteratively be the neighbors of l.
-                a+=layout[i];//add layout[i] to domain
-            if (layout[l].addToDomain(   a.DtoF().onesComplement().selectOnlyFinal()   ).checkComplete()  )// update the domains.
-                doForwardChecking(layout[l]);
+            if (layout[l].isComplete())
+                this->doForwardChecking(l);
         }
          
     }
+    num* selectUnassignedVariable()const{
+        return this->minimumRemainingValueWithDegreeHeuristic();
+    }
+    
+    int getDegreeAtLoc(int loc)const{
+        int count=0;
+        neighborSet(loc) //a loop where i is loc of each neighbor
+            if (!(layout[i].isComplete()))
+                count++;
+        return count;
+    }
+    int getLocationOf(num* teh)const{
+        for(int row=72;row>=0;row-=9){
+            for(int col=0;col<9;col++){
+                if( &layout[row+col] == teh)
+                    return (row+col);
+            }
+        }
+        return -1;
+    }
+    
+    num* minimumRemainingValueWithDegreeHeuristic()const{
+        num* a = layout;
+        for(int l=0;l<81;l++){
+            if (!(layout[l].isComplete())){
+                if (layout[l].countRemainingDomain() < a->countRemainingDomain()) //If mrv[l] < mrv(a) ; a = l
+                    a = &layout[l];
+                else if (layout[l].countRemainingDomain() == a->countRemainingDomain()) //if equal
+                    if (this->getDegreeAtLoc(l)  > this->getDegreeAtLoc(  this->getLocationOf(a)  ) )     // and degree l > degree a
+                        a = &layout[l];                                    //  then a = l
+            }
+        }
+        return a;
+    }
+    bool goalTest()const{
+        for(int i=0;i<81;i++)
+            if (!(layout[i].isComplete()))//if i'th item not complete
+                return false;
+        return true;
+    }
+    void removeFromMemory(){
+        delete layout;
+        return;
+    }
+
+
+    num* backTrack();
 };
 /*
 state struct info:
-state is a struct for easier access to the layout.
+This is the problem definition
 
 */
 
@@ -178,6 +201,51 @@ ostream& operator<<(ostream&os , const state& st){
     }
     return os;
 }
+num* state::backTrack(){
+    this->globalForwardChecking(); //Update all domains with forward checking.
+    if (this->goalTest()){
+        cout<<"HERE215"<<endl;
+        return layout;
+    }
+    num* var;
+    state* neue = NULL;
+    num* neueReturn;
+    doItAgain:
+    var = this->selectUnassignedVariable();
+    if (var->countRemainingDomain() == 1){
+        var->becomeDomain();
+        cout<<"$ "<<var<<endl;
+        goto doItAgain;
+    }
+    cout<<"VAR: "<< var->getInt() <<endl;
+    //
+    if (var->countRemainingDomain() == 0){
+        cout<<"HERE229"<<endl;
+        return NULL;
+    }
+    for (int i = var->nextPossibleDomain();i != -1; i = var->nextPossibleDomain() ){
+        if (var->checkValidityOfDomainItem(i)){
+            //duplicate layout
+            *neue = state(this);
+            //set duplicated var as i
+            cout<<"DUPLEIC::\n"<<*neue<<"\n";
+            neue->layout[this->getLocationOf(var)].setTo(i);
+            neueReturn = neue->backTrack(); //Try with that value.
+            if (neueReturn != NULL){ //if we found soln
+                cout<<"HERE240"<<endl;
+                return neueReturn;
+            }
+            else{ //and if not
+                neue->removeFromMemory();
+                neue=NULL;
+            }
+        }
+        //nextPossibleDomain() will remove i from the domain so else statement not necessary.
+    }
+    cout<<"HERE250"<<endl;
+    return NULL;
+}   
+
 int convertChar(char a){ 
     if (a=='0'){
         return 0;
@@ -225,9 +293,8 @@ class FileHandler{ //A file handler for problems
             for(int row=72;row>=0;row-=9){
                 getline(file,temp);
                 for(int col=0;col<9;col++){
-                    a->layout[row+col] = num( //The number at place in file
-                                  convertChar(
-                                  temp[col*2]  ));
+                    a->layout[row+col] = num(convertChar(temp[col*2]));
+                                        //The number at place in file
                 }
             }
             file.close();
@@ -245,6 +312,7 @@ class FileHandler{ //A file handler for problems
 int main(){
     state theState;
     FileHandler fh("inputa.txt", &theState);
-    cout<<endl<<theState<<endl;
-    
+    cout<<endl<<theState<<endl<<"Starting solver\n";
+    cout<<  *theState.backTrack()  <<endl;
+    cout<<"END\n";
 }

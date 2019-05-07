@@ -17,7 +17,7 @@ name i, an int.
 */
 
 class num{
-    int self; 
+    unsigned int self; 
     // A bitwise representation of a number. 
     //bits [31-19] Unused
     //bits [9-17] Domain Set 1-9
@@ -27,8 +27,13 @@ class num{
         self = 0b111111111000000000; //init with domain 123456789
     }
     num(int neue){
-        self = ((neue==0)?0b111111111000000000:(1 << neue));
-        cout<<self<<" ";
+        self = ((neue==0)?0b111111111000000000:(1 << neue-1));
+    }
+    num(int old, bool spec){
+        if(spec)
+            self = old;
+        else
+            self=0b111111111000000000;
     }
     operator int()const{ //Implicit casting to int
         return this->getNum();
@@ -37,17 +42,19 @@ class num{
         self = ((neue==0)?self:(1 << neue-1));
         return *this;
     }
+    
     int getNum() const {  
     //Returns a numerical representation of num
-    //If there are only domain values returns 0
+    //If domain only or failure returns 0;
         if (self == 0)return 0;
-        if (self<=512 || self > 0){
+        if (self > 256)return 0;
+        if (self<=256){
             for(int i =0;i<9;i++){
-                if (self&(1<<i))
-                    return i;
+                if (  (self & (1<<i) ) != 0 )
+                    return i+1;
             }
         }
-        return 0;
+        return -90210;
     }
     int getInt() const {return self;} //Returns the unmodified "self"
     num& becomeDomain(){ // shift Domain to Final
@@ -57,7 +64,6 @@ class num{
     bool isComplete()const{
         return (self<=512 && self > 0);
     }
-    // -------------------------------------------------------------------------------------------ADD THE ++
     num& operator-= (const num& rhs){//Removes a number to the Domain set  bits [9-17]
         int neue = rhs.getInt();
         neue = neue << 9; //Shift left logical by 9
@@ -65,6 +71,8 @@ class num{
         return *this;
     }
     int countRemainingDomain()const{
+        if (this->isComplete())
+            return 0;
         int count=0;
         decode(self>>9){
             count++;
@@ -72,11 +80,11 @@ class num{
         return count;
     }
     int nextPossibleDomain(){
-        decode(self<<9){
+        decode(self>>9){
             *this-=num(i);//get the first and 
             return i;//dont continue loop.
         }
-        return -1;
+        return 0;
     }
     bool checkValidityOfDomainItem(int t)const{ //ffffffic this as it probably should check neighborset;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         return true;
@@ -103,13 +111,6 @@ then the domain is 8 and 3.
  
 */
 
-int* memcpy (int *dest, const int *src, size_t len){
-  int *d = (int*)dest;
-  const int *s = (int*)src;
-  while (len--)
-    *d++ = *s++;
-  return dest;
-}
 struct state{
     num* layout;
     state(){
@@ -117,7 +118,12 @@ struct state{
     }
     state(state* old){
         layout = new (num[81]);
-        memcpy(layout, old->layout, 81);
+        cout<<"\t";
+        for(int i=0;i<81;i++){
+            layout[i] = num(old->layout[i].getInt(), true);
+            cout<<i<<":"<<layout[i].getNum()<<" ";
+        }
+        cout<<"\nEXITING FUNCTION state(state*old)\n";
     }
     
     void doForwardChecking(int changedValueLocation){
@@ -209,7 +215,7 @@ num* state::backTrack(){
     }
     num* var;
     state* neue = NULL;
-    num* neueReturn;
+    num* neueReturn = NULL;
     doItAgain:
     var = this->selectUnassignedVariable();
     if (var->countRemainingDomain() == 1){
@@ -223,25 +229,30 @@ num* state::backTrack(){
         cout<<"HERE229"<<endl;
         return NULL;
     }
-    for (int i = var->nextPossibleDomain();i != -1; i = var->nextPossibleDomain() ){
+    cout<<"REACHED PREFORELOOP... countRemainingDomain(): "<<var->countRemainingDomain()<<" isComplete: "<<var->isComplete()<<" \n";
+    for (int i = var->nextPossibleDomain();i != 0; i = var->nextPossibleDomain() ){
+        cout<<"inloop i: "<<i<<endl;
         if (var->checkValidityOfDomainItem(i)){
             //duplicate layout
-            *neue = state(this);
+            cout<<"DO WE RETURN??\n";
+            *neue = new state(this);
+            cout<<"\nYESSS\n";
             //set duplicated var as i
-            cout<<"DUPLEIC::\n"<<*neue<<"\n";
+            cout<<"DUPLEIC::\n"<<*neue<<"DUPLETIC::\n";
             neue->layout[this->getLocationOf(var)].setTo(i);
             neueReturn = neue->backTrack(); //Try with that value.
             if (neueReturn != NULL){ //if we found soln
-                cout<<"HERE240"<<endl;
                 return neueReturn;
             }
             else{ //and if not
-                neue->removeFromMemory();
-                neue=NULL;
+                //neue->removeFromMemory();
+                //delete neue;
+                //neue=NULL;
             }
-        }
+            cout<<"SHORTCIRCUIT";
+        }cout<<"SHORTCIRCUIT22222";
         //nextPossibleDomain() will remove i from the domain so else statement not necessary.
-    }
+    }cout<<"SHORTCIRCUIT33333";
     cout<<"HERE250"<<endl;
     return NULL;
 }   
@@ -309,10 +320,75 @@ class FileHandler{ //A file handler for problems
 
 };
 
+
+void unitTests(){
+    int failures = 0;
+    num* J;
+    num* L = new num();
+    cout<<"Starting tests\n";
+    for(int i=1;i<10;++i){
+        cout<<"Testing with final: "<<i<<"\n";
+        J = new num(i);
+        cout<<"\tgetNum: "<<J->getNum()<<" should be: "<<i<<endl;
+        if(J->getNum() != i) failures++;
+        cout<<"\tgetInt: "<<J->getInt()<<" should be: "<<(1<<i-1)<<endl;
+        if(J->getInt() != (1<<i-1)) failures++;
+        cout<<"\tisComplete: "<<J->isComplete()<<" should be: "<< true <<endl;
+        if(J->isComplete() != true) failures++;
+        cout<<"\tcountRemainingDomain: "<<J->countRemainingDomain()<<" should be: "<<0<<endl;
+        if(J->countRemainingDomain() != 0 ) failures++;
+        cout<<"\tnextPossibleDomain: "<<J->nextPossibleDomain()<<" should be: "<<0<<endl;
+        if(J->nextPossibleDomain() != 0) failures++;
+        cout<<"END\n\n";
+        delete J;
+    }
+    cout<<"Testing with Domainset: FULL\n";
+    cout<<"\tgetNum: "<<L->getNum()<<" should be: "<<0<<endl;
+    if(L->getNum() != 0) failures++;
+    cout<<"\tgetInt: "<<L->getInt()<<" should be: "<<(0b111111111<<9)<<endl;
+    if(L->getInt() != (0b111111111<<9)) failures++;
+    cout<<"\tisComplete: "<<L->isComplete()<<" should be: "<< false <<endl;
+    if(L->isComplete() != false)failures++;
+    cout<<endl;
+    cout<<"\tcountRemainingDomain: "<<L->countRemainingDomain()<<" should be: "<<9<<endl;
+    if(L->countRemainingDomain() != 9)failures++;
+    cout<<"\tnextPossibleDomain: "<<L->nextPossibleDomain()<<" should be: "<<1<<endl;
+    
+    cout<<"\tnextPossibleDomain: "<<L->nextPossibleDomain()<<" should be: "<<2<<endl;
+    *L -= num(3);
+    cout<<"\tINFO removed 3 from domain with -=\n";
+    cout<<endl;
+    cout<<"\tnextPossibleDomain: "<<L->nextPossibleDomain()<<" should be: "<<4<<endl;
+    cout<<"\tcountRemainingDomain: "<<L->countRemainingDomain()<<" should be: "<<(9-4)<<endl;
+    cout<<endl;
+    cout<<"\tnextPossibleDomain: "<<L->nextPossibleDomain()<<" should be: "<<5<<endl;
+    cout<<"\tnextPossibleDomain: "<<L->nextPossibleDomain()<<" should be: "<<6<<endl;
+    cout<<endl;
+    cout<<"\tnextPossibleDomain: "<<L->nextPossibleDomain()<<" should be: "<<7<<endl;
+    cout<<"\tnextPossibleDomain: "<<L->nextPossibleDomain()<<" should be: "<<8<<endl;
+    cout<<"\tcountRemainingDomain: "<<L->countRemainingDomain()<<" should be: "<<1<<endl;
+    failures+=(L->countRemainingDomain()-1);
+    L->becomeDomain();
+    cout<<"\tINFO did L->becomeDomain()\n";
+    cout<<endl;
+    cout<<"\tgetNum: "<<L->getNum()<<" should be: "<<9<<endl;
+    if(L->getNum() != 9)failures++;
+    cout<<"\tgetInt: "<<L->getInt()<<" should be: "<<(1<<8)<<endl;
+    if(L->getInt() != (1<<8))failures++;
+    cout<<endl;
+    cout<<"\tisComplete: "<<L->isComplete()<<" should be: "<< true <<endl;
+    if(!L->isComplete())failures++;
+    cout<<"\tcountRemainingDomain: "<<L->countRemainingDomain()<<" should be: "<<0<<endl;
+    if(L->countRemainingDomain()!=0)failures++;
+    cout<<"\tnextPossibleDomain: "<<L->nextPossibleDomain()<<" should be: "<<0<<endl;
+    if(L->nextPossibleDomain()!=0)failures++;
+    cout<<"END\nTOTAL NUMBER OF FAILURES: "<<failures<<"\n";
+}
+
 int main(){
     state theState;
     FileHandler fh("inputa.txt", &theState);
-    cout<<endl<<theState<<endl<<"Starting solver\n";
-    cout<<  *theState.backTrack()  <<endl;
-    cout<<"END\n";
+    //unitTests();
+    cout<<theState<<endl;
+    cout<<*theState.backTrack()<<endl;
 }

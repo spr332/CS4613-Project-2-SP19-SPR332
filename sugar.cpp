@@ -12,14 +12,14 @@ int decoder::first(){
 }
 int decoder::next(){
     if (domain==0)
-        return 0;
+        return -1;
     for (int i = 0; i<9; i++){
         if (domain & (1<<i)){ //if i'th bit exists (starts at 1 goes to 256 aka 9)
-            domain = domain - (1<<i);//remove a bit
+            domain = domain ^ (1<<i);//remove a bit
             return i+1; //return that i existed
         }
     }
-    return 0;
+    return -1;
 }
 
 
@@ -28,7 +28,7 @@ int decoder::next(){
 
     HashLL::HashLL(){
         first = new HSHLL();
-        first->mine = NULL;
+        first->mine = -1;
         first->next = NULL;
     }
     void HashLL::push(int neue){
@@ -58,7 +58,6 @@ allNeighbors::allNeighbors(int in){
     //Verticals
     for(int i=0;i<9;i++)
         neighbors.push(  (in%9)+(i*9)  );
-    
     //Horizontals
     int ndexs[]={80,71,62,53,44,35,26,17, 8};
     int k;
@@ -69,11 +68,10 @@ allNeighbors::allNeighbors(int in){
     there:;;
     for(int i=0;i<9;i++)
         neighbors.push(  ndexs[8-k] - i   );
-    
+
     // 3x3 excludes duplicates.
     int b,n,m,f,j;
-    k = neighbors.pop();
-    neighbors.push(k);
+    k=ndexs[8-k]-8;
     for(b=0;b<9;b++)
         if ((9*b)==k)
             break;
@@ -102,7 +100,6 @@ allNeighbors::allNeighbors(int in){
     neighbors.push(m+f);
     neighbors.push(n+j);
     neighbors.push(m+j);
-    
 }
 
 int allNeighbors::first(){

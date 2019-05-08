@@ -2,8 +2,8 @@
 #define tyuityuityuityuityuifghjfghjfghjvbnvbnmvnbm
 
 
-#define decode(a) decoder decodername(a);for(int i=decodername.first();i!=0;i=decodername.next())
-#define neighborSet(a) allNeighbors decodername(a);for(int i=decodername.first();i!=0;i=decodername.next())
+#define decode(a) decoder decodername(a);for(int i=decodername.first();i!=-1;i=decodername.next())
+#define neighborSet(a) allNeighbors decodername(a);for(int i=decodername.first();i!=-1;i=decodername.next())
 
 
 

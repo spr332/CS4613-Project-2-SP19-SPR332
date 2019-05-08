@@ -35,10 +35,6 @@ class num{
     operator int()const{ //Implicit casting to int
         return this->getNum();
     }
-    num& setTo(int neue){
-        self = ((neue==0)?self:(1 << neue-1));
-        return *this;
-    }
     
     int getNum() const {  
     //Returns a numerical representation of num
@@ -53,13 +49,16 @@ class num{
         }
         return -90210;
     }
-    int getInt() const {return self;} //Returns the unmodified "self"
+    void setNum(int neue){
+        self = ((neue==0)?0b111111111000000000:(1 << neue-1));
+    }
+    unsigned int getInt() const {return self;} //Returns the unmodified "self"
     num& becomeDomain(){ // shift Domain to Final
         self = self >> 9;
         return *this;
     }
     bool isComplete()const{
-        return (self<=512 && self > 0);
+        return ( (self<512) && (self > 0) );
     }
     num& operator-= (const num& rhs){//Removes a number to the Domain set  bits [9-17]
         int neue = rhs.getInt();
@@ -122,25 +121,22 @@ struct state{
     }
     
     void doForwardChecking(int changedValueLocation){
-        //After a variable is assigned a value, update the remaining legal values of its neighbors.
-        num* theNum = &layout[changedValueLocation];
-        neighborSet(changedValueLocation){ //This is a loop. i will iteratively be the neighbors of changedValueLocation.
-            if (! (layout[i].isComplete() )) //if not complete, update domain
-                layout[i]-= *theNum;
+        neighborSet(changedValueLocation){
+            if (!(layout[i].isComplete() )){
+                layout[i].removeFromDomain( layout[changedValueLocation].getNum() );
+            }
         }
     }
-    void globalForwardChecking(){ //Update the domain values of everything possible
-        num a;
+    void globalForwardChecking(){
         for(int l=0;l<81;l++){
-            if (layout[l].isComplete())
+            if (layout[l].isComplete()){
                 this->doForwardChecking(l);
+            }
         }
-         
     }
-    bool checkValidityOfDomainItem(int loc)const{ //ffffffic this as it probably should check neighborset;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-        int current = layout[loc].getNum();
+    bool checkValidityOfDomainItem(int loc, int domItem)const{
         neighborSet(loc){
-            if(layout[i].getNum() == current && i!=loc){
+            if(layout[i].getNum() == domItem && i!=loc){
                 return false;
             }
         }
@@ -152,9 +148,11 @@ struct state{
     
     int getDegreeAtLoc(int loc)const{
         int count=0;
-        neighborSet(loc) //a loop where i is loc of each neighbor
-            if (!(layout[i].isComplete()))
+        neighborSet(loc){ //a loop where i is loc of each neighbor
+            if (!(layout[i].isComplete())){
                 count++;
+            }
+        }
         return count;
     }
     int getLocationOf(num* teh)const{
@@ -174,16 +172,21 @@ struct state{
                 if (layout[l].countRemainingDomain() < a->countRemainingDomain()) //If mrv[l] < mrv(a) ; a = l
                     a = &layout[l];
                 else if (layout[l].countRemainingDomain() == a->countRemainingDomain()) //if equal
-                    if (this->getDegreeAtLoc(l)  < this->getDegreeAtLoc(  this->getLocationOf(a)  ) )     // and degree l > degree a
+                    if (this->getDegreeAtLoc(l)  > this->getDegreeAtLoc(  this->getLocationOf(a)  ) )     // and degree l > degree a
                         a = &layout[l];                                    //  then a = l
+                        //
             }
         }
         return a;
     }
     bool goalTest()const{
-        for(int i=0;i<81;i++)
-            if (!(layout[i].isComplete()))//if i'th item not complete
+        for(int l=0;l<81;l++){
+            if (!(layout[l].isComplete()))//if l'th item not complete
                 return false;
+            neighborSet(l)
+                if ( layout[l].getNum() == layout[i].getNum() )
+                    return false;
+        }
         return true;
     }
     void removeFromMemory(){
@@ -212,58 +215,44 @@ ostream& operator<<(ostream&os , const state& st){
     return os;
 }
 state* state::backTrack(){
-    this->globalForwardChecking(); //Update all domains with forward checking.
-    if (this->goalTest()){
-        cout<<"Goal test made::"<<endl;
+    if (this->goalTest())
         return this;
-    }
-    num* var;
-    state* neue = NULL;
-    state* neueReturn = NULL;
+    
+    this->globalForwardChecking();
+    state* result;
+    state* duplicate;
+    int location;
     doItAgain:
-    var = this->selectUnassignedVariable();
-    if (var->countRemainingDomain() == 1){
+    num* var = this->selectUnassignedVariable();
+    location = this->getLocationOf(var);
+    //cout<<endl<<*this<<location<<"A "<<var->countRemainingDomain()<<endl;
+    if( var->countRemainingDomain() == 1){
         var->becomeDomain();
-        cout<<"$ "<<*var<<endl;
-        this->globalForwardChecking(  );
         goto doItAgain;
     }
-    cout<<"LOC: "<< this->getLocationOf(var) <<" VAR: "<< var->getInt() <<endl;
-    //
-    this->globalForwardChecking();
-    if (var->countRemainingDomain() == 0){
-        cout<<"Ran out of remaining domains"<<endl;
+    if( var->countRemainingDomain() == 0 ){
+        cout<<*this;
+        cout<<var->getNum()<<" "<<location<<" "<<var->getInt()<<" "<< var->countRemainingDomain()<<endl;
         return NULL;
     }
-    for (int i = var->nextPossibleDomain();i != -1; i = var->nextPossibleDomain() ){
-        //duplicate layout
-        neue = new state(this);
-        //set duplicated var as i
-        neue->layout[this->getLocationOf(var)].setTo(i);
-        neue->globalForwardChecking();
-
-
-
-        
-        if (neue->checkValidityOfDomainItem( this->getLocationOf(var) )){
-            cout<<"CALLING bT()\n";
-            neue->globalForwardChecking( );
-            neueReturn = neue->backTrack(); //Try with that value.
+    cout<<location;
+    for(int domainItem = var->nextPossibleDomain(); domainItem != -1; domainItem = var->nextPossibleDomain() ){
+        cout<<" A"<<domainItem;
+        if ( this->checkValidityOfDomainItem(location, domainItem) ){ //If domainItem consistent with assignment
+            duplicate = new state(this);
+            duplicate->layout[location].setNum(domainItem);
+            cout<<"LOC:"<<location<<" DOM:"<<domainItem<<" Val@Loc@dupe:"<<duplicate->layout[location].getNum()<<endl<<*duplicate<<endl;
+            duplicate->doForwardChecking(location);
+            cout<<"calling backTrack()\n";
+            result = duplicate->backTrack();
+            if (result != NULL){
+                return result;
+            }
+            duplicate->removeFromMemory();//remove from assignment
         }
-        if (neueReturn != NULL){ //if we found soln
-            cout<<"found a solution, returning\n";
-            return neueReturn;
-        }
-        else{ //and if not
-            neue->removeFromMemory();
-            delete neue;
-            neue=NULL;
-        }
-        
-        //nextPossibleDomain() will remove i from the domain so else statement not necessary.
-    }
-    cout<<"End of false solution path\n";
-    return NULL;
+    }//nextPossibleDomain will remove the domain item from var
+    //cout<<"FAILURE\n";
+    return NULL; //NULL is failure.
 }   
 
 int convertChar(char a){ 
@@ -346,8 +335,8 @@ void unitTests(){
         if(J->isComplete() != true) failures++;
         cout<<"\tcountRemainingDomain: "<<J->countRemainingDomain()<<" should be: "<<0<<endl;
         if(J->countRemainingDomain() != 0 ) failures++;
-        cout<<"\tnextPossibleDomain: "<<J->nextPossibleDomain()<<" should be: "<<0<<endl;
-        if(J->nextPossibleDomain() != 0) failures++;
+        cout<<"\tnextPossibleDomain: "<<J->nextPossibleDomain()<<" should be: "<<-1<<endl;
+        if(J->nextPossibleDomain() != -1) failures++;
         cout<<"END\n\n";
         delete J;
     }
@@ -389,24 +378,50 @@ void unitTests(){
     if(!L->isComplete())failures++;
     cout<<"\tcountRemainingDomain: "<<L->countRemainingDomain()<<" should be: "<<0<<endl;
     if(L->countRemainingDomain()!=0)failures++;
-    cout<<"\tnextPossibleDomain: "<<L->nextPossibleDomain()<<" should be: "<<0<<endl;
-    if(L->nextPossibleDomain()!=0)failures++;
+    cout<<"\tnextPossibleDomain: "<<L->nextPossibleDomain()<<" should be: "<<-1<<endl;
+    if(L->nextPossibleDomain()!=-1)failures++;
+    cout<<"END of domainSet FULL tests\n\n";
+    
+    state theState;
+    FileHandler fh("SUDUKO_Input1.txt", &theState);
+    theState.globalForwardChecking();
+    unsigned int test;
+    cout<<"testing domain traversal and forward checking. (pt1)\n";
+    for(int l=0;l<81;l++){
+        test = theState.layout[l].getInt();
+        if(theState.layout[l].isComplete()){
+            decode(test>>9){
+                cout<<"Failure: \n\tdomain found: "<<i<<"\n";
+                failures++;
+            }
+        }
+        else{
+            test = theState.layout[l].countRemainingDomain();
+            neighborSet(l){
+                if(theState.layout[i].isComplete()){
+                    theState.layout[l].removeFromDomain( theState.layout[i].getNum() );
+                }
+            }
+            if(theState.layout[l].countRemainingDomain() != test){
+                cout<<"Domain not updated properly at:"<<l<<"\n";
+                failures++;
+            }
+        }
+    }
+    
+    cout<<theState.layout[79].getInt()<<"\n\n";
+    cout<<theState<<endl;
+    
     cout<<"END\nTOTAL NUMBER OF FAILURES: "<<failures<<"\n";
 }
 
 int main(){
-    //unitTests();
-    state theState;
-    state* ans;
-    FileHandler fh("inputa.txt", &theState);
-    theState.globalForwardChecking();
-    // ans = new state(&theState);
-    // cout<<theState<<endl<<endl<<*ans;
-    // cout<< ans->checkValidityOfDomainItem(8)<<endl;
-    // cout<< ans->layout[8].getInt() <<"   " << ans->layout[28].getInt()<<endl;
-    // cout<< theState.layout[8].getInt() <<"   " << theState.layout[28].getInt()<<endl;
-    cout<<theState<<endl;
-    ans = theState.backTrack();
-    if(ans)cout<<*ans;
-    cout<<"\nEND\n";
+    unitTests();
+    // state theState;
+    // state* ans;
+    // FileHandler fh("SUDUKO_Input1.txt", &theState);
+    // theState.globalForwardChecking();
+    // ans = theState.backTrack();
+    // cout<<"\nEND\n";
+    // cout<< *ans << endl;
 }

@@ -2,6 +2,7 @@
 #include <string>
 #include <vector>
 #include <fstream>
+#include <bitset>
 #include "sugar.h"
 using namespace std;
 
@@ -61,9 +62,8 @@ class num{
         return ( (self<512) && (self > 0) );
     }
     num& operator-= (const num& rhs){//Removes a number to the Domain set  bits [9-17]
-        int neue = rhs.getInt();
-        neue = neue << 9; //Shift left logical by 9
-        self = self ^ neue; //bitwise xor
+        int neue = rhs.getNum();
+        this->removeFromDomain(neue);
         return *this;
     }
     int countRemainingDomain()const{
@@ -76,7 +76,9 @@ class num{
         return count;
     }
     void removeFromDomain(int the){
-        self-=(1<<(the+9-1));
+        if( self & (1<<(the+9-1)))
+            self-=(1<<(the+9-1));
+        
     }
     int nextPossibleDomain(){
         decode(self>>9){
@@ -168,6 +170,9 @@ struct state{
     num* minimumRemainingValueWithDegreeHeuristic()const{
         num* a = layout;
         for(int l=0;l<81;l++){
+            if (!(layout[l].isComplete())){a = &layout[l];break;}
+        }
+        for(int l=0;l<81;l++){
             if (!(layout[l].isComplete())){
                 if (layout[l].countRemainingDomain() < a->countRemainingDomain()) //If mrv[l] < mrv(a) ; a = l
                     a = &layout[l];
@@ -215,35 +220,23 @@ ostream& operator<<(ostream&os , const state& st){
     return os;
 }
 state* state::backTrack(){
-    if (this->goalTest())
-        return this;
+    
     
     this->globalForwardChecking();
     state* result;
     state* duplicate;
     int location;
-    doItAgain:
     num* var = this->selectUnassignedVariable();
     location = this->getLocationOf(var);
-    //cout<<endl<<*this<<location<<"A "<<var->countRemainingDomain()<<endl;
-    if( var->countRemainingDomain() == 1){
-        var->becomeDomain();
-        goto doItAgain;
-    }
-    if( var->countRemainingDomain() == 0 ){
-        cout<<*this;
-        cout<<var->getNum()<<" "<<location<<" "<<var->getInt()<<" "<< var->countRemainingDomain()<<endl;
-        return NULL;
-    }
-    cout<<location;
+    cout<<*this<<endl;
     for(int domainItem = var->nextPossibleDomain(); domainItem != -1; domainItem = var->nextPossibleDomain() ){
-        cout<<" A"<<domainItem;
+
         if ( this->checkValidityOfDomainItem(location, domainItem) ){ //If domainItem consistent with assignment
             duplicate = new state(this);
             duplicate->layout[location].setNum(domainItem);
-            cout<<"LOC:"<<location<<" DOM:"<<domainItem<<" Val@Loc@dupe:"<<duplicate->layout[location].getNum()<<endl<<*duplicate<<endl;
+
             duplicate->doForwardChecking(location);
-            cout<<"calling backTrack()\n";
+
             result = duplicate->backTrack();
             if (result != NULL){
                 return result;
@@ -252,6 +245,7 @@ state* state::backTrack(){
         }
     }//nextPossibleDomain will remove the domain item from var
     //cout<<"FAILURE\n";
+    
     return NULL; //NULL is failure.
 }   
 
@@ -382,11 +376,34 @@ void unitTests(){
     if(L->nextPossibleDomain()!=-1)failures++;
     cout<<"END of domainSet FULL tests\n\n";
     
+    
+    cout<<"The following assume an input text of:\n0 0 0 2 6 0 7 0 1\n6 8 0 0 7 0 0 9 0\n1 9 0 0 0 4 5 0 0\n"
+            <<"8 2 0 1 0 0 0 4 0\n"
+            <<"0 0 4 6 0 2 9 0 0\n"
+            <<"0 5 0 0 0 3 0 2 8\n"
+            <<"0 4 0 0 5 0 0 3 6\n"
+            <<"7 0 3 0 1 8 0 0 0\n\n";
+    
     state theState;
     FileHandler fh("SUDUKO_Input1.txt", &theState);
-    theState.globalForwardChecking();
+    
+    cout<<"Testing forward checking:\n\t";
+    cout<<(bitset<32>(theState.layout[37].getInt()))<<" Should be:\n\t";
+    cout<<(bitset<32>(0b111111111<<9))<<"\n\t";
+    neighborSet(37)
+        theState.doForwardChecking(i);
+    cout<<(bitset<32>(theState.layout[37].getInt()))<<" Should be:\n\t";
+    cout<<(bitset<32>(0b001000101<<9))<<"\n\n";
+    
+    cout<<" MRVw/DH:"<<theState.minimumRemainingValueWithDegreeHeuristic()<<"\n";
+    
+    
+    
     unsigned int test;
-    cout<<"testing domain traversal and forward checking. (pt1)\n";
+    cout<<"testing domain traversal and global forward checking. (pt1)\n";
+    theState.globalForwardChecking();
+    theState.globalForwardChecking();
+    theState.globalForwardChecking();
     for(int l=0;l<81;l++){
         test = theState.layout[l].getInt();
         if(theState.layout[l].isComplete()){
@@ -408,6 +425,9 @@ void unitTests(){
             }
         }
     }
+    cout<<"\t";
+    cout<<(bitset<32>(theState.layout[37].getInt()))<<" Should be:\n\t";
+    cout<<(bitset<32>(0b001000101<<9))<<"\n\n";
     
     cout<<theState.layout[79].getInt()<<"\n\n";
     cout<<theState<<endl;
@@ -416,12 +436,13 @@ void unitTests(){
 }
 
 int main(){
-    unitTests();
-    // state theState;
-    // state* ans;
-    // FileHandler fh("SUDUKO_Input1.txt", &theState);
-    // theState.globalForwardChecking();
-    // ans = theState.backTrack();
-    // cout<<"\nEND\n";
-    // cout<< *ans << endl;
+    //unitTests();
+    state theState;
+    state* ans;
+    FileHandler fh("SUDUKO_Input1.txt", &theState);
+    theState.globalForwardChecking();
+    ans = theState.backTrack();
+    cout<<theState<<"\nEND\n";
+    
+    cout<< *ans << endl;
 }

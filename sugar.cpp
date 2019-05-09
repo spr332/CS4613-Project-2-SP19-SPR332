@@ -7,6 +7,8 @@
 #include <fstream>
 
 decoder::decoder(int in){domain=in;}
+//decoder will output items from the domain in an iterable fasion. 
+//not implemented with the standardized iterable.
 int decoder::first(){
     return this->next();
 }
@@ -53,7 +55,7 @@ int decoder::next(){
 
 
 allNeighbors::allNeighbors(int in){
-    //from in generate all neighbors push into HashLL
+    //from "in" generate all neighbors push into HashLL
     neighbors = HashLL();
     //Verticals
     for(int i=0;i<9;i++)
@@ -64,7 +66,6 @@ allNeighbors::allNeighbors(int in){
     for(k=0;k<9;k++)
         if(in<=ndexs[8-k])
             goto there;
-    std::cerr<<"ALLNEIGHBORS GOT *cough* *cough* messed up!!!"<<in<<"  "<<k<<std::endl;
     there:;;
     for(int i=0;i<9;i++)
         neighbors.push(  ndexs[8-k] - i   );

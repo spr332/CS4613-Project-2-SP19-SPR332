@@ -33,9 +33,7 @@ class num{
     num(int old, bool spec){
         self = old;
     }
-    operator int()const{ //Implicit casting to int
-        return this->getNum();
-    }
+
     
     int getNum() const {  
     //Returns a numerical representation of num
@@ -59,7 +57,7 @@ class num{
         return *this;
     }
     bool isComplete()const{
-        return ( (self<512) && (self > 0) );
+        return ( (self<512) && (self > 0) ); //returns if a num has a final value
     }
     num& operator-= (const num& rhs){//Removes a number to the Domain set  bits [9-17]
         int neue = rhs.getNum();
@@ -70,7 +68,7 @@ class num{
         if (this->isComplete())
             return 0;
         int count=0;
-        decode(self>>9){
+        decode(self>>9){ //decode iterates for each domain item.
             count++;
         }
         return count;
@@ -95,6 +93,7 @@ ostream& operator<<(ostream& os, const num& n){
     os<<n.getNum();
     return os;
 }
+
 /*
 class num info:
 
@@ -124,22 +123,22 @@ struct state{
     
     void doForwardChecking(int changedValueLocation){
         neighborSet(changedValueLocation){
-            if (!(layout[i].isComplete() )){
+            if (!(layout[i].isComplete() )){ //for all neighbors if dont have final value, update domain
                 layout[i].removeFromDomain( layout[changedValueLocation].getNum() );
             }
         }
     }
     void globalForwardChecking(){
         for(int l=0;l<81;l++){
-            if (layout[l].isComplete()){
+            if (layout[l].isComplete()){ //for all values if completed (has a final value) do forward checking for his neighbors
                 this->doForwardChecking(l);
             }
         }
     }
     bool checkValidityOfDomainItem(int loc, int domItem)const{
         neighborSet(loc){
-            if(layout[i].getNum() == domItem && i!=loc){
-                return false;
+            if(layout[i].getNum() == domItem && i!=loc){ 
+                return false; //If a value at any neighbor location of  loc is domItem, ret false
             }
         }
         return true;
@@ -159,7 +158,7 @@ struct state{
     }
     int getLocationOf(num* teh)const{
         for(int row=72;row>=0;row-=9){
-            for(int col=0;col<9;col++){
+            for(int col=0;col<9;col++){ //finds the location as a memory offset from &layout[0]
                 if( &layout[row+col] == teh)
                     return (row+col);
             }
@@ -170,27 +169,30 @@ struct state{
     num* minimumRemainingValueWithDegreeHeuristic()const{
         num* a = layout;
         for(int l=0;l<81;l++){
-            if (!(layout[l].isComplete())){a = &layout[l];break;}
+            if (!(layout[l].isComplete())){a = &layout[l];break;} // Force a to be an incomplete value
         }
         for(int l=0;l<81;l++){
             if (!(layout[l].isComplete())){
-                if (layout[l].countRemainingDomain() < a->countRemainingDomain()) //If mrv[l] < mrv(a) ; a = l
+                if (layout[l].countRemainingDomain() < a->countRemainingDomain()) //If mrv l  < mrv a  ; a = l
                     a = &layout[l];
-                else if (layout[l].countRemainingDomain() == a->countRemainingDomain()) //if equal
-                    if (this->getDegreeAtLoc(l)  > this->getDegreeAtLoc(  this->getLocationOf(a)  ) )     // and degree l > degree a
-                        a = &layout[l];                                    //  then a = l
-                        //
+                else if (layout[l].countRemainingDomain() == a->countRemainingDomain())              //if equal
+                    if (this->getDegreeAtLoc(l)  > this->getDegreeAtLoc(  this->getLocationOf(a)  ) )// and degree l > degree a
+                        a = &layout[l];                                                              //  then a = l
             }
         }
         return a;
     }
+    
     bool goalTest()const{
         for(int l=0;l<81;l++){
-            if (!(layout[l].isComplete()))//if l'th item not complete
+            if (!(layout[l].isComplete())){//if l'th item not complete
                 return false;
-            neighborSet(l)
-                if ( layout[l].getNum() == layout[i].getNum() )
+            }
+            neighborSet(l){//check correctness (if bad input this'll catch it)
+                if ((layout[l].getNum() == layout[i].getNum()) && (i != l)){
                     return false;
+                }
+            }
         }
         return true;
     }
@@ -207,9 +209,6 @@ state struct info:
 This is the problem definition
 
 */
-
-
-
 ostream& operator<<(ostream&os , const state& st){
     for(int row=72;row>=0;row-=9){
         for(int col=0;col<9;col++){
@@ -219,35 +218,8 @@ ostream& operator<<(ostream&os , const state& st){
     }
     return os;
 }
-state* state::backTrack(){
-    
-    
-    this->globalForwardChecking();
-    state* result;
-    state* duplicate;
-    int location;
-    num* var = this->selectUnassignedVariable();
-    location = this->getLocationOf(var);
-    cout<<*this<<endl;
-    for(int domainItem = var->nextPossibleDomain(); domainItem != -1; domainItem = var->nextPossibleDomain() ){
 
-        if ( this->checkValidityOfDomainItem(location, domainItem) ){ //If domainItem consistent with assignment
-            duplicate = new state(this);
-            duplicate->layout[location].setNum(domainItem);
 
-            duplicate->doForwardChecking(location);
-
-            result = duplicate->backTrack();
-            if (result != NULL){
-                return result;
-            }
-            duplicate->removeFromMemory();//remove from assignment
-        }
-    }//nextPossibleDomain will remove the domain item from var
-    //cout<<"FAILURE\n";
-    
-    return NULL; //NULL is failure.
-}   
 
 int convertChar(char a){ 
     if (a=='0'){
@@ -304,16 +276,16 @@ class FileHandler{ //A file handler for problems
         }
         else{
             cerr << "FILE "<< fileName <<" NOT FOUND"<<endl<<"Exiting..."<<endl;
+            exit(5);
         }
+        a->globalForwardChecking();
     }
-    void out(){
-        return;
-    }
-
 };
 
 
 void unitTests(){
+    //This is how I tested every possible issue.
+    //Ignore this.
     int failures = 0;
     num* J;
     num* L = new num();
@@ -377,7 +349,7 @@ void unitTests(){
     cout<<"END of domainSet FULL tests\n\n";
     
     
-    cout<<"The following assume an input text of:\n0 0 0 2 6 0 7 0 1\n6 8 0 0 7 0 0 9 0\n1 9 0 0 0 4 5 0 0\n"
+    cout<<"The following assume an input text of SUDOKU_Input1.txt:\n0 0 0 2 6 0 7 0 1\n6 8 0 0 7 0 0 9 0\n1 9 0 0 0 4 5 0 0\n"
             <<"8 2 0 1 0 0 0 4 0\n"
             <<"0 0 4 6 0 2 9 0 0\n"
             <<"0 5 0 0 0 3 0 2 8\n"
@@ -435,14 +407,52 @@ void unitTests(){
     cout<<"END\nTOTAL NUMBER OF FAILURES: "<<failures<<"\n";
 }
 
-int main(){
-    //unitTests();
+
+state* state::backTrack(){
+    if (this->goalTest() == true)
+        return this;
+    state* result;
+    state* duplicate;
+    int location;
+    num* var = this->selectUnassignedVariable();
+    location = this->getLocationOf(var);
+    for(int domainItem = var->nextPossibleDomain(); domainItem != -1; domainItem = var->nextPossibleDomain() ){
+        if ( this->checkValidityOfDomainItem(location, domainItem) ){ //If domainItem consistent with assignment
+            duplicate = new state(this);
+            duplicate->layout[location].setNum(domainItem);
+            duplicate->doForwardChecking(location);
+            result = duplicate->backTrack();
+            if (result != NULL){
+                this->removeFromMemory(); //Will remove self from memory because goal state found and the recursive "I" am  no longer needed
+                return result;
+            }
+            duplicate->removeFromMemory();//remove from assignment
+        }
+    }//nextPossibleDomain will remove the domain item from var
+    return NULL; //NULL is failure.
+}   
+
+int main(int argc, char *argv[]){
+    if((argc == 1)||(argc > 3)){
+        cout<<"Usage options:\n main.exe <filename input> <filename output>"
+            <<"\n main.exe <filename input>\n Only specifying an input file will output to stdout\n";
+        exit(5);
+    }
     state theState;
     state* ans;
-    FileHandler fh("SUDUKO_Input1.txt", &theState);
-    theState.globalForwardChecking();
+    FileHandler fh(argv[1], &theState);
     ans = theState.backTrack();
-    cout<<theState<<"\nEND\n";
-    
-    cout<< *ans << endl;
+    if(ans == NULL){
+        cout<<"Input invalid or puzzle unsolvable\nExiting...\n";
+        exit(0);
+    }
+    if(argc == 3){
+        ofstream Ofile;
+        Ofile.open(argv[2]);
+        Ofile<< *ans;
+    }
+    else{
+        cout<< *ans << endl;
+    }
+    exit(0);
 }

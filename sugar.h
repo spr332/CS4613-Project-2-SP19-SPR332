@@ -1,7 +1,7 @@
 #ifndef tyuityuityuityuityuifghjfghjfghjvbnvbnmvnbm
 #define tyuityuityuityuityuifghjfghjfghjvbnvbnmvnbm
 
-
+//these #define are what I used to iterate over the neighbor set or domain set of a num
 #define decode(a) decoder decodername(a);for(int i=decodername.first();i!=-1;i=decodername.next())
 #define neighborSet(a) allNeighbors decodername(a);for(int i=decodername.first();i!=-1;i=decodername.next())
 
